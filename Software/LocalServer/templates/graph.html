@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>センサーの時系列データと重心位置</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+</head>
+<body>
+    <h1>センサーの時系列データと重心位置</h1>
+    
+    <!-- センサー時系列データのプロット -->
+    <div id="sensor_graph"></div>
+    
+    <!-- 重心位置のプロット -->
+    <div id="centroid_graph" style="width: 500px; height: 300px;"></div>
+
+    <script>
+        // 重心位置の矩形座標 (センサーの配置に合わせる)
+        const rectangle = {
+            x: [0, 100, 100, 0, 0],
+            y: [0, 0, 50, 50, 0],
+            type: 'scatter',
+            mode: 'lines',
+            name: "Boundary",
+            line: { color: 'black', dash: 'solid' }
+        };
+
+        // 重心データを表示する関数
+        function drawCentroid(data) {
+            const timestamps = data.map(row => row.timestamp);
+            const xCenters = data.map(row => row.x_center);
+            const yCenters = data.map(row => row.y_center);
+
+            const centroids = {
+                x: xCenters,
+                y: yCenters,
+                type: 'scatter',
+                mode: 'markers',
+                name: "Centroid",
+                marker: { color: 'red', size: 8 }
+            };
+
+            const layout = {
+                title: 'Centroid Position',
+                xaxis: { title: 'X Position (cm)', range: [0, 100] },
+                yaxis: { title: 'Y Position (cm)', range: [0, 50] },
+                showlegend: true
+            };
+
+            Plotly.newPlot("centroid_graph", [rectangle, centroids], layout);
+        }
+
+        // APIからデータを取得してグラフを更新
+        function updateGraph() {
+            // センサー時系列データ
+            fetch('/api/graph_data')
+                .then(response => response.json())
+                .then(data => {
+                    const timestamps = data.map(row => row.timestamp);
+                    const sensor1 = data.map(row => row.sensor1);
+                    const sensor2 = data.map(row => row.sensor2);
+                    const sensor3 = data.map(row => row.sensor3);
+                    const sensor4 = data.map(row => row.sensor4);
+
+                    const plotData = [
+                        {
+                            x: timestamps,
+                            y: sensor1,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: "Sensor 1"
+                        },
+                        {
+                            x: timestamps,
+                            y: sensor2,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: "Sensor 2"
+                        },
+                        {
+                            x: timestamps,
+                            y: sensor3,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: "Sensor 3"
+                        },
+                        {
+                            x: timestamps,
+                            y: sensor4,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: "Sensor 4"
+                        }
+                    ];
+
+                    const layout = {
+                        title: 'Load Sensor Data over Time',
+                        xaxis: { title: 'Timestamp' },
+                        yaxis: { title: 'Load (g)' }
+                    };
+
+                    Plotly.newPlot("sensor_graph", plotData, layout);
+                });
+
+            // 重心位置データ
+            fetch('/api/centroid_data')
+                .then(response => response.json())
+                .then(data => {
+                    drawCentroid(data);
+                });
+        }
+
+        // 初回描画
+        updateGraph();
+
+        // 5秒ごとに更新
+        setInterval(updateGraph, 5000);
+    </script>
+</body>
+</html>

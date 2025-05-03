@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫の体重の時系列</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <h1>猫の体重の時系列</h1>
+
+    <div id="cat_weight_graph" style="height: 400px;"></div>
+    <div id="diff_load_graph" style="height: 300px;"></div>
+    <div id="net_weight_graph" style="height: 400px;"></div>
+
+
+    <script>
+        async function updateGraph() {
+            const res = await fetch("/api/event_data");
+            const allEvents = await res.json();  // allEvents: [event1, event2, ..., eventN]
+
+            // 各イベントの代表値を抽出（最初のtimestampを使う）
+            // const timestamps = allEvents.map(event => event.timestamp[0]);  // timestampは配列
+            const timestamps = allEvents.map(event =>
+                new Date(event.timestamp[0]).toISOString()
+            );
+            const catWeights = allEvents.map(event => event.cat_weight);
+            const diffLoads = allEvents.map(event => event.diff_load);
+
+            // --- loadcell_values と tare_offset を抽出 ---
+            const rawLoadcellMatrix = allEvents.map(event => event.loadcell_values);
+            const tareOffsetMatrix = allEvents.map(event => event.tare_offset);
+
+            const sensorCount = 4;
+            const elapsedSeconds = [];  // 横軸: 経過秒数
+            const netValuesPerSensor = Array.from({ length: sensorCount }, () => []);
+
+            const event = allEvents[0]; // 最新1件だけを取得
+            const loadcellValues = event.loadcell_values; // (65, 4)
+            const tareOffset = event.tare_offset;         // (65, 4)
+            const timeArray = event.timestamp;
+
+            // 開始時刻を基準に経過秒を計算
+            const baseTime = new Date(timeArray[0]);
+
+            for (let i = 0; i < loadcellValues.length; i++) {
+                const currentTime = new Date(timeArray[i]);
+                const deltaSec = (currentTime - baseTime) / 1000; // 秒に変換
+                elapsedSeconds.push(deltaSec);
+                for (let sensorIdx = 0; sensorIdx < sensorCount; sensorIdx++) {
+                    const net = loadcellValues[i][sensorIdx] - tareOffset[i][sensorIdx];
+                    netValuesPerSensor[sensorIdx].push(net);
+                }
+            }
+
+            const traces = [];
+
+            for (let sensorIdx = 0; sensorIdx < sensorCount; sensorIdx++) {
+                traces.push({
+                    x: elapsedSeconds,
+                    y: netValuesPerSensor[sensorIdx],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: `センサー${sensorIdx + 1} 正味重量 (g)`
+                });
+            }
+
+            // --- 合計正味重量の算出 ---
+            const totalNetValues = [];
+            for (let i = 0; i < loadcellValues.length; i++) {
+                let total = 0;
+                for (let sensorIdx = 0; sensorIdx < sensorCount; sensorIdx++) {
+                    total += netValuesPerSensor[sensorIdx][i];
+                }
+                totalNetValues.push(total);
+            }
+
+            traces.push({
+                x: elapsedSeconds,
+                y: totalNetValues,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: '合計正味重量 (g)',
+                line: { color: 'gray', width: 3, dash: 'dot' }
+            });
+
+
+            const weightTrace = {
+                x: timestamps,
+                y: catWeights,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: '猫の体重 (g)',
+                line: { color: 'blue' }
+            };
+
+            const diffTrace = {
+                x: timestamps,
+                y: diffLoads,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: '重量差分 (g)',
+                line: { color: 'green' }
+            };
+
+            Plotly.newPlot("cat_weight_graph", [weightTrace], {
+                title: "猫の体重の時系列変化",
+                xaxis: { 
+                    title: "時間",
+                    type: "date"
+                 },
+                yaxis: { title: "体重 (g)" }
+            });
+
+            Plotly.newPlot("diff_load_graph", [diffTrace], {
+                title: "重量差分の時系列変化",
+                xaxis: { 
+                    title: "時間",
+                    type: "date"
+                },
+                yaxis: { title: "重量 (g)" }
+            });
+
+            // 正味重量グラフ（新規に追加）
+            Plotly.newPlot("net_weight_graph", traces, {
+                title: "直近のイベント時の正味重量の時系列変化",
+                xaxis: { title: "時間" },
+                yaxis: { title: "重量 (g)" }
+            });
+
+        }
+
+        updateGraph();
+        setInterval(updateGraph, 10000); // 10秒ごとに更新
+    </script>
+</body>
+</html>

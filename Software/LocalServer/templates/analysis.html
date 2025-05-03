@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データ解析結果</title>
+</head>
+<body>
+    <h1>猫トイレ分析結果</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>項目</th>
+                <th>結果</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in analysis %}
+            <tr>
+                <td>{{ result.item }}</td>
+                <td>{{ result.value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
