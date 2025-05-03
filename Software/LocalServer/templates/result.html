@@ -40,7 +40,7 @@
             const elapsedSeconds = [];  // 横軸: 経過秒数
             const netValuesPerSensor = Array.from({ length: sensorCount }, () => []);
 
-            const event = allEvents[0]; // 最新1件だけを取得
+            const event = allEvents[allEvents.length - 1]; // 最新1件だけを取得
             const loadcellValues = event.loadcell_values; // (65, 4)
             const tareOffset = event.tare_offset;         // (65, 4)
             const timeArray = event.timestamp;
