@@ -21,9 +21,14 @@
 
             // 各イベントの代表値を抽出（最初のtimestampを使う）
             // const timestamps = allEvents.map(event => event.timestamp[0]);  // timestampは配列
-            const timestamps = allEvents.map(event =>
-                new Date(event.timestamp[0]).toISOString()
-            );
+            //const timestamps = allEvents.map(event =>
+            //    new Date(event.timestamp[0]).toISOString()
+            //);
+            const timestamps = allEvents.map(event => {
+                const utcDate = new Date(event.timestamp[0]);
+                const jstDate = new Date(utcDate.getTime() + 9 * 60 * 60 * 1000); // 9時間加算
+                return jstDate.toISOString(); // Plotlyが正しく解釈できる形式
+            });
             const catWeights = allEvents.map(event => event.cat_weight);
             const diffLoads = allEvents.map(event => event.diff_load);
 
